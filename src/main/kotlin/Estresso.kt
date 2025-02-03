@@ -7,77 +7,14 @@ import kotlin.math.exp
  * https://github.com/WHSAH/estrannaise.js
  */
 object Estresso {
-    val PKParameters: Map<String, List<Double>> = mapOf(
-        "EV" to listOf(478.0, 0.236, 4.85, 1.24),
-        "EEn" to listOf(191.4, 0.119, 0.601, 0.402),
-        "EC" to listOf(246.0, 0.0825, 3.57, 0.669),
-        "EB" to listOf(1893.1, 0.67, 61.5, 4.34),
-        "EUn" to listOf(471.5, 0.01729, 6.528, 2.285),
-        "EUn casubq" to listOf(16.15, 0.046, 0.022, 0.101),
-        "patch tw" to listOf(16.792, 0.283, 5.592, 4.3),
-        "patch ow" to listOf(59.481, 0.107, 7.842, 5.193),
-    )
-
-    fun PKFunctions(conversionFactor: Double = 1.0): Map<String, (Double, Double, Boolean, Double) -> Double> {
-        fun callE2Curve3C(
-            key: String,
-            t: Double,
-            dose: Double,
-            steadystate: Boolean = false,
-            T: Double = 1.0
-        ): Double {
-            val parameters = PKParameters[key] ?: throw IllegalArgumentException("Key $key not a valid key.")
-
-            return e2Curve3C(
-                t,
-                dose,
-                parameters[0],
-                parameters[1],
-                parameters[2],
-                parameters[3],
-                Ds = 0.0,
-                D2 = 0.0,
-                steadystate = steadystate,
-                T = T
-            )
-        }
-
-        return mapOf(
-            "EV" to { t: Double, dose: Double, steadystate: Boolean, T: Double ->
-                callE2Curve3C("EV", t, dose, steadystate, T)
-            },
-            "EEn im" to { t: Double, dose: Double, steadystate: Boolean, T: Double ->
-                callE2Curve3C("EEn", t, dose, steadystate, T)
-            },
-            "EC im" to { t: Double, dose: Double, steadystate: Boolean, T: Double ->
-                callE2Curve3C("EC", t, dose, steadystate, T)
-            },
-            "EUn im" to { t: Double, dose: Double, steadystate: Boolean, T: Double ->
-                callE2Curve3C("EUn", t, dose, steadystate, T)
-            },
-            "EUn casubq" to { t: Double, dose: Double, steadystate: Boolean, T: Double ->
-                callE2Curve3C("EUn casubq", t, dose, steadystate, T)
-            },
-            "EB im" to { t: Double, dose: Double, steadystate: Boolean, T: Double ->
-                callE2Curve3C("EB", t, dose, steadystate, T)
-            },
-            // todo: tackle patches later
-//            "patch tw" to { t: Double, dose: Double, steadystate: Boolean, T: Double ->
-//                e2Patch3C(t, conversionFactor * dose, *PKParameters["patch tw"]!!.toDoubleArray(), 3.5, steadystate, T)
-//            },
-//            "patch ow" to { t: Double, dose: Double, steadystate: Boolean, T: Double ->
-//                e2Patch3C(t, conversionFactor * dose, *PKParameters["patch ow"]!!.toDoubleArray(), 7.0, steadystate, T)
-//            }
-        )
-    }
 
     /**
-     * Calculate a given set of multi-doses
-     * Offset values of `doses`, `times`, and `types` need to match.
+     * Calculate a given set of doses
+     * Offset values of `doses`, `times`, and `models` need to match.
      * @param t time offset for dose calculation (time value for formula)
      * @param doses Dose amounts, in mg
      * @param times Dosing intervals, in days, relative to the t
-     * @param models Ester/types, see `methodList` for values
+     * @param models Ester/types, see `Ester` for values
      * @param conversionFactor conversion factor for conversion from pg/mL to other
      * @param random if values need uncertainty applied
      * @param intervals true if days are set as interval
@@ -86,7 +23,7 @@ object Estresso {
         t: Double,
         doses: List<Double>,
         times: List<Double>,
-        models: List<String>,
+        models: List<Ester>,
         conversionFactor: Double = 1.0,
         random: Boolean = false,
         intervals: Boolean = false
@@ -105,7 +42,14 @@ object Estresso {
 
         for (i in doses.indices) {
             if (!random) {
-                sum += PKFunctions(conversionFactor)[models[i]]?.invoke(t - times[i], doses[i], false, 1.0) ?: 0.0 // ensure we dont add null to sum
+                sum += e2Curve3C(
+                    t - times[i],
+                    doses[i],
+                    models[i].d,
+                    models[i].k1,
+                    models[i].k2,
+                    models[i].k3,
+                )
             } else {
                 error("Random functions are not supported yet.")
             }
