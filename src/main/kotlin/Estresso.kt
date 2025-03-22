@@ -11,9 +11,9 @@ object Estresso {
     /**
      * Calculate a given set of doses
      * Offset values of `doses`, `times`, and `models` need to match.
-     * @param t time offset for dose calculation (time value for formula)
+     * @param t time offset for dose calculation in DAYS from 0
      * @param doses Dose amounts, in mg
-     * @param times Dosing intervals, in days, relative to the t
+     * @param times Dosing intervals, in days, relative to the 0
      * @param models Ester/types, see `Ester` for values
      * @param conversionFactor conversion factor for conversion from pg/mL to other
      * @param random if values need uncertainty applied
